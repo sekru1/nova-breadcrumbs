@@ -2,28 +2,25 @@
 
 namespace Formfeed\Breadcrumbs;
 
-use Laravel\Nova\Menu\Breadcrumb as NovaBreadcrumb;
-use Laravel\Nova\Resource;
-use Laravel\Nova\Nova;
-use Laravel\Nova\Http\Requests\NovaRequest;
-
-use Eminiarts\Tabs\Tabs;
-
 use Formfeed\Breadcrumbs\Concerns\InteractsWithParentResources;
 use Formfeed\Breadcrumbs\Concerns\InteractsWithRelationships;
-
+use Laravel\Nova\Http\Requests\NovaRequest;
+use Laravel\Nova\Menu\Breadcrumb as NovaBreadcrumb;
+use Laravel\Nova\Nova;
+use Laravel\Nova\Resource;
+use Laravel\Nova\Tabs\Tab;
 use ReflectionObject;
 
 /**
  * @method static static make($name, $path = null)
  **/
-
-class Breadcrumb extends NovaBreadcrumb {
-
+class Breadcrumb extends NovaBreadcrumb
+{
     use InteractsWithParentResources;
     use InteractsWithRelationships;
 
-    public function __construct($name, $path = null, $request = null) {
+    public function __construct($name, $path = null, $request = null)
+    {
         $this->name = $name;
         $this->path = $path;
     }
@@ -32,10 +29,9 @@ class Breadcrumb extends NovaBreadcrumb {
      * Create a breadcrumb from a resource class.
      *
      * @param  \Laravel\Nova\Resource|class-string<\Laravel\Nova\Resource>  $resourceClass
-     * @return static
      */
-
-    public static function resource($resourceClass) {
+    public static function resource(Resource|string $resourceClass): static
+    {
         if ($resourceClass instanceof Resource && $resourceClass->model()->exists === true) {
             return static::detailResource($resourceClass);
         }
@@ -43,15 +39,14 @@ class Breadcrumb extends NovaBreadcrumb {
         return static::indexResource($resourceClass);
     }
 
-    public static function indexResource($resourceClass) {
+    public static function indexResource($resourceClass)
+    {
 
         $breadcrumb = static::make(Nova::__($resourceClass::{static::label()}()))
-                        ->path('/resources/' . $resourceClass::uriKey())
-                        ->canSee(function ($request) use ($resourceClass) {
-                            return $resourceClass::availableForNavigation($request) && $resourceClass::authorizedToViewAny($request);
-                        });
-
-
+            ->path('/resources/' . $resourceClass::uriKey())
+            ->canSee(function ($request) use ($resourceClass) {
+                return $resourceClass::availableForNavigation($request) && $resourceClass::authorizedToViewAny($request);
+            });
 
         if ($breadcrumb->shouldLinkToParent($resourceClass)) {
             $tabsQuery = $breadcrumb->getTabs($resourceClass);
@@ -63,21 +58,24 @@ class Breadcrumb extends NovaBreadcrumb {
             } else {
                 $breadcrumb->path = $breadcrumb->getParentBreadcrumb($resourceClass);
             }
+
             return $breadcrumb;
         } else {
             return $breadcrumb;
         }
     }
 
-    public static function detailResource($resourceClass) {
+    public static function detailResource($resourceClass)
+    {
         return static::make(__($resourceClass->{static::title()}()))
-        ->path('/resources/' . $resourceClass::uriKey() . '/' . $resourceClass->getKey())
-        ->canSee(function ($request) use ($resourceClass) {
-            return $resourceClass->authorizedToView($request);
-        });
+            ->path('/resources/' . $resourceClass::uriKey() . '/' . $resourceClass->getKey())
+            ->canSee(function ($request) use ($resourceClass) {
+                return $resourceClass->authorizedToView($request);
+            });
     }
 
-    public function shouldLinkToParent($resource) {
+    public function shouldLinkToParent($resource)
+    {
 
         $novaClass = is_string($resource) ? $resource : $resource::class;
 
@@ -85,8 +83,8 @@ class Breadcrumb extends NovaBreadcrumb {
             return $novaClass::$linkToParent;
         }
 
-        if (!is_null(config("nova-breadcrumbs.linkToParent"))) {
-            if (config("nova-breadcrumbs.linkToParent") === true && $this->hasParentResource($resource)) {
+        if (!is_null(config('nova-breadcrumbs.linkToParent'))) {
+            if (config('nova-breadcrumbs.linkToParent') === true && $this->hasParentResource($resource)) {
                 return true;
             }
         }
@@ -98,29 +96,32 @@ class Breadcrumb extends NovaBreadcrumb {
         return false;
     }
 
-    public function getParentBreadcrumb($resource) {
+    public function getParentBreadcrumb($resource)
+    {
         $novaClass = $resource::class;
         $parentResource = $this->getParentResource($resource);
 
         if (!is_null($parentResource) && $parentResource->model()->exists) {
-            return "/resources/" . $parentResource->uriKey() . "/" . $parentResource->model()->getKey();
+            return '/resources/' . $parentResource->uriKey() . '/' . $parentResource->model()->getKey();
         }
+
         return null;
     }
 
-    public function getTabs(Resource $resource) {
+    public function getTabs(Resource $resource)
+    {
         $novaClass = $resource::class;
 
         $parentResource = $this->getParentResource($resource);
 
-        if (!class_exists(Tabs::class) || is_null($parentResource)) {
+        if (!class_exists(Tab::class) || is_null($parentResource)) {
             return null;
         }
 
         $fields = $parentResource->fields(NovaRequest::createFromGlobals());
 
         foreach ($fields as $field) {
-            if (!$field instanceof Tabs) {
+            if (!$field instanceof Tab) {
                 continue;
             }
 
@@ -128,31 +129,35 @@ class Breadcrumb extends NovaBreadcrumb {
             foreach ($field->data as $tabField) {
                 if (property_exists($tabField, 'resourceName') && $tabField->resourceName === $novaClass::uriKey() && !is_null($tabField->meta['tabSlug']) && $tabField->showOnDetail === true) {
                     $tab = $tabField;
-                    $tabQuery = $field->slug ?? $this->getTabPreservedName($field) ?? "tab";
+                    $tabQuery = $field->slug ?? $this->getTabPreservedName($field) ?? 'tab';
                     break;
                 }
             }
         }
 
         if (isset($tab)) {
-            return "/resources/" . $parentResource->uriKey() . "/" . $parentResource->model()->getKey() . "#{$tabQuery}={$tab->meta['tabSlug']}";
+            return '/resources/' . $parentResource->uriKey() . '/' . $parentResource->model()->getKey() . "#{$tabQuery}={$tab->meta['tabSlug']}";
         }
 
         return null;
     }
 
-    protected static function label() {
-        return config("nova-breadcrumbs.label", "label");
+    protected static function label()
+    {
+        return config('nova-breadcrumbs.label', 'label');
     }
 
-    protected static function title() {
-        return config("nova-breadcrumbs.title", "title");
+    protected static function title()
+    {
+        return config('nova-breadcrumbs.title', 'title');
     }
 
-    public function getTabPreservedName($tab) {
+    public function getTabPreservedName($tab)
+    {
         $reflection = new ReflectionObject($tab);
         $property = $reflection->getProperty('preservedName');
         $property->setAccessible(true);
-        return ($property->getValue($tab));
+
+        return $property->getValue($tab);
     }
 }
