@@ -9,7 +9,6 @@ use Laravel\Nova\Menu\Breadcrumb as NovaBreadcrumb;
 use Laravel\Nova\Nova;
 use Laravel\Nova\Resource;
 use Laravel\Nova\Tabs\Tab;
-use ReflectionObject;
 
 /**
  * @method static static make($name, $path = null)
@@ -127,16 +126,16 @@ class Breadcrumb extends NovaBreadcrumb
 
             $tabQuery = null;
             foreach ($field->data as $tabField) {
-                if (property_exists($tabField, 'resourceName') && $tabField->resourceName === $novaClass::uriKey() && !is_null($tabField->meta['tabSlug']) && $tabField->showOnDetail === true) {
+                if (property_exists($tabField, 'resourceName') && $tabField->resourceName === $novaClass::uriKey() && !is_null($tabField->name) && $tabField->showOnDetail === true) {
                     $tab = $tabField;
-                    $tabQuery = $field->slug ?? $this->getTabPreservedName($field) ?? 'tab';
+                    $tabQuery = $field->slug ?? $field->name ?? 'tab';
                     break;
                 }
             }
         }
 
         if (isset($tab)) {
-            return '/resources/' . $parentResource->uriKey() . '/' . $parentResource->model()->getKey() . "#{$tabQuery}={$tab->meta['tabSlug']}";
+            return '/resources/' . $parentResource->uriKey() . '/' . $parentResource->model()->getKey() . "#{$tabQuery}={$tab->name}";
         }
 
         return null;
@@ -150,14 +149,5 @@ class Breadcrumb extends NovaBreadcrumb
     protected static function title()
     {
         return config('nova-breadcrumbs.title', 'title');
-    }
-
-    public function getTabPreservedName($tab)
-    {
-        $reflection = new ReflectionObject($tab);
-        $property = $reflection->getProperty('preservedName');
-        $property->setAccessible(true);
-
-        return $property->getValue($tab);
     }
 }
