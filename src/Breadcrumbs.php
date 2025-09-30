@@ -64,7 +64,7 @@ class Breadcrumbs extends NovaBreadcrumbs {
         static::$groupBreadcrumbCallback = $callback;
     }
 
-    public function build(NovaRequest $request = null) {
+    public function build(?NovaRequest $request = null) {
 
         $this->request = $request ?? app()->make(NovaRequest::class);
         $this->resource = $this->findResource($this->request);
